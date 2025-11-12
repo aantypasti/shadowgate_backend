@@ -1,57 +1,62 @@
 # shadowgate_api/main.py
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from shadowgate_api.db import Base, engine
 from shadowgate_api.routers import users, admin
-# from shadowgate_api.routers import trades, loans  # enable when ready
-from shadowgate_api.routers import users, admin, loans, trades
+# Uncomment when these routers are ready and deployed
+# from shadowgate_api.routers import loans, trades
 from shadowgate_api.routers import loan_eligibility as elig
-from pathlib import Path
-from sqlalchemy import text
-from shadowgate_api.db import engine  # your existing engine
 
 MODELS_SQL = Path(__file__).with_name("models.sql")
 
-
-
-
 app = FastAPI(title="Shadowgate API")
 
-# --- CORS: allow browser calls from any site (dev-friendly). Tighten later. ---
-from fastapi.middleware.cors import CORSMiddleware
-
+# CORS (loose for dev; tighten to your domain later)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # loosen for testing; tighten later to your domain(s)
-    allow_credentials=False,    # you're not using cookies/sessions
-    allow_methods=["*"],        # POST/GET/OPTIONS etc.
-    allow_headers=["*"],        # Content-Type, Authorization, etc.
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
+
+def _apply_models_sql():
+    """Execute models.sql one statement at a time (Postgres-safe)."""
+    if not MODELS_SQL.exists():
+        print("[db] models.sql not found; skipping")
+        return
+
+    raw = MODELS_SQL.read_text(encoding="utf-8")
+    # naive splitter is fine because the file only has simple CREATE/INDEX statements
+    statements = [s.strip() for s in raw.split(";") if s.strip()]
+    if not statements:
+        print("[db] models.sql empty; skipping")
+        return
+
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.exec_driver_sql(stmt)
+    print(f"[db] models.sql applied ({len(statements)} statements)")
 
 @app.on_event("startup")
 def init_db_on_startup():
-    # 1. Run raw SQL setup if available
-    if MODELS_SQL.exists():
-        sql = MODELS_SQL.read_text(encoding="utf-8")
-        with engine.begin() as conn:
-            conn.exec_driver_sql(sql)
-        print("[db] models.sql applied")
-    else:
-        print("[db] models.sql not found; skipping")
-
-    # 2. Ensure ORM models are created
+    # 1) Apply raw DDL
+    _apply_models_sql()
+    # 2) Create any ORM tables (if you add SQLAlchemy models later)
     Base.metadata.create_all(bind=engine)
     print("[db] ORM models created")
 
-
-# --- Health check ---
 @app.get("/")
 def root():
     return {"message": "Shadowgate API running"}
 
-# --- Routers ---
-app.include_router(users.router)   # /api/...
-app.include_router(admin.router)   # /api/admin/...
+# Routers
+app.include_router(users.router)
+app.include_router(admin.router)
 app.include_router(elig.router)
-# app.include_router(trades.router)
 # app.include_router(loans.router)
+# app.include_router(trades.router)
