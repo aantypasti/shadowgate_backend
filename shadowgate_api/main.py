@@ -10,10 +10,11 @@ from shadowgate_api.routers import users, admin
 # Uncomment when these routers are ready and deployed
 # from shadowgate_api.routers import loans, trades
 from shadowgate_api.routers import loan_eligibility as elig
+from fastapi import FastAPI
+app = FastAPI(title="Shadowgate API")
+
 
 MODELS_SQL = Path(__file__).with_name("models.sql")
-
-app = FastAPI(title="Shadowgate API")
 
 # CORS (loose for dev; tighten to your domain later)
 app.add_middleware(
