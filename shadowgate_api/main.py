@@ -4,6 +4,8 @@ from fastapi import FastAPI
 from shadowgate_api.db import Base, engine
 from shadowgate_api.routers import users, admin
 # from shadowgate_api.routers import trades, loans  # enable when ready
+from shadowgate_api.routers import users, admin, loans, trades
+from shadowgate_api.routers import loan_eligibility as elig
 
 app = FastAPI(title="Shadowgate API")
 
@@ -32,5 +34,6 @@ def root():
 # --- Routers ---
 app.include_router(users.router)   # /api/...
 app.include_router(admin.router)   # /api/admin/...
+app.include_router(elig.router)
 # app.include_router(trades.router)
 # app.include_router(loans.router)
