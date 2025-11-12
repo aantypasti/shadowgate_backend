@@ -6,6 +6,13 @@ from shadowgate_api.routers import users, admin
 # from shadowgate_api.routers import trades, loans  # enable when ready
 from shadowgate_api.routers import users, admin, loans, trades
 from shadowgate_api.routers import loan_eligibility as elig
+from pathlib import Path
+from sqlalchemy import text
+from shadowgate_api.db import engine  # your existing engine
+
+MODELS_SQL = Path(__file__).with_name("models.sql")
+
+
 
 
 app = FastAPI(title="Shadowgate API")
@@ -21,11 +28,21 @@ app.add_middleware(
     allow_headers=["*"],        # Content-Type, Authorization, etc.
 )
 
-
-# --- DB init on boot ---
 @app.on_event("startup")
-def init_db() -> None:
+def init_db_on_startup():
+    # 1. Run raw SQL setup if available
+    if MODELS_SQL.exists():
+        sql = MODELS_SQL.read_text(encoding="utf-8")
+        with engine.begin() as conn:
+            conn.exec_driver_sql(sql)
+        print("[db] models.sql applied")
+    else:
+        print("[db] models.sql not found; skipping")
+
+    # 2. Ensure ORM models are created
     Base.metadata.create_all(bind=engine)
+    print("[db] ORM models created")
+
 
 # --- Health check ---
 @app.get("/")
