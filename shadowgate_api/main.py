@@ -12,17 +12,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "http://localhost",
-        "http://127.0.0.1",
-        "*"  # loosened for now so you can test; tighten later if you want
-    ],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],        # loosen for testing; tighten later to your domain(s)
+    allow_credentials=False,    # you're not using cookies/sessions
+    allow_methods=["*"],        # POST/GET/OPTIONS etc.
+    allow_headers=["*"],        # Content-Type, Authorization, etc.
 )
+
 
 # --- DB init on boot ---
 @app.on_event("startup")
